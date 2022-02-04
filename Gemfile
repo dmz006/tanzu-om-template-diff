@@ -1,11 +1,11 @@
 source 'https://rubygems.org'
 
 gem "optimist"
-gem "tty-prompt"
+gem "fileutils"
 gem "net"
 gem "uri"
 gem "json"
-gem "fileutils"
+gem "tty-prompt"
 gem "diffy"
 gem "yaml"
 gem "find"
