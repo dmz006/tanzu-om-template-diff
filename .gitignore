@@ -1,0 +1,6 @@
+.bundle
+.byebug_history
+.project
+.pivnet-diff-config
+configs
+Gemfile.lock

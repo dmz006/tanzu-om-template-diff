@@ -1,0 +1,145 @@
+#!/usr/bin/env ruby
+require 'optimist'
+require 'fileutils'
+require 'net/http'
+require 'uri'
+require 'json'
+require 'tty-prompt'
+require 'diffy'
+require 'byebug'
+require 'yaml'
+
+CONFIG_FILE=".pivnet-diff-config"
+prompt = TTY::Prompt.new
+if File.exists?(CONFIG_FILE)
+  $pivnet_api_token = YAML::load_file(CONFIG_FILE)
+else
+  $pivnet_api_token = prompt.mask("What is your network.pivotal.io legacy API token") 
+  File.open(CONFIG_FILE, "w") do |file|
+    file.write $pivnet_api_token.to_yaml
+  end
+end 
+om_cli = ""
+blob_path = ""
+downloaded_releases = ""
+
+def pivnet_request(url)
+  uri = URI.parse(url)
+
+  request = Net::HTTP::Get.new(uri)
+  request["Authorization"] = $pivnet_api_token
+
+  req_options = {
+    use_ssl: uri.scheme == "https",
+  }
+
+  response = Net::HTTP.start(uri.hostname, uri.port, req_options) do |http|
+    http.request(request)
+  end
+  return(JSON.parse(response.body))
+end
+
+opts = Optimist::options do
+version "Tanzu Product Version Configuration Variable diff 0.0.1"
+  banner <<-EOS
+Tanzu Product Version Configuration Variable diff will provide a list of product tile configuration variable changes between release versions
+Usage:
+       pivnet-product-config-diff [options]
+Example:
+       pivnet-product-config-diff -p "elastic-runtime" -r "2.10.25 2.10.23"
+
+where [options] are:
+EOS
+
+  opt :product, "Product Slug List", short: "-p", type: :string
+  opt :releases, "Releases to diff", short: "-r", type: :string
+  opt :dont_clean_folders, "Don't Clean Temp Folder", short: "-d", type: :flag
+end
+
+#puts `clear`
+
+# Get products available in pivnet
+puts "Getting product list from Tanzu Network"
+products = pivnet_request("https://network.tanzu.vmware.com/api/v2/products")
+products_list = []
+products["products"].each do |pivnet_product|
+  products_list << {name: pivnet_product["name"], value: pivnet_product["slug"]}
+end
+if opts[:product]
+  selected_product = opts[:product]
+else
+  # Select product to get diff for
+  selected_product = prompt.select("Select Product", products_list.sort_by!(&:values), per_page: 40, filter: true)
+end
+selected_product_record = products["products"].select {|product|product["slug"] == selected_product}.first
+
+# Get product releases
+if opts[:releases]
+  selected_releases = opts[:releases].split(" ").sort
+else
+  puts "Getting product #{selected_product} releases url"
+  product = pivnet_request("https://network.tanzu.vmware.com/api/v2/products/#{selected_product}")
+  release_url = product["_links"]["releases"]["href"]
+  puts "Getting product #{selected_product} releases"
+  product_releases = pivnet_request(release_url)
+
+  # Get the releases for the selected product
+  releases_list = []
+  product_releases["releases"].each do |release|
+    release_name = release["version"].ljust(7)+' : '+release["release_date"]
+    releases_list << {id: release["id"], name: release_name, value: release["version"]}
+  end
+
+  # Select releases to diff
+  selected_releases = prompt.multi_select("Select Releases", releases_list.sort_by!{|k,v| v}, max: 2,per_page: 25).sort
+end
+
+# Download configuration templates
+puts "Downloading configuration templates for releases #{selected_releases}"
+FileUtils.mkdir 'tmp_templates' unless File.exists?('tmp_templates')
+
+selected_releases.each do |release|
+  om_cli = "om config-template --output-directory tmp_templates/ --pivnet-api-token '#{$pivnet_api_token}' --pivnet-product-slug '#{selected_product}' --product-version '#{release}'"
+  old_slugs = selected_product_record["old_slugs"].count
+  if old_slugs > 1
+  	blob_path = selected_product_record["old_slugs"].first
+  	om_cli += " --file-glob '#{blob_path}*.pivotal' "
+  end
+  system om_cli
+  
+  if old_slugs <= 1
+  	blob_path = Dir.glob("tmp_templates/*").first.split('/').last
+  end
+  downloaded_releases = Dir.glob("tmp_templates/#{blob_path}/*").sort
+end
+
+# Diff for templates
+Diffy::Diff.default_format = :color
+puts "Difference for Default Variables"
+f1 = "#{Dir.pwd}/#{downloaded_releases.first}/default-vars.yml"
+f2 = "#{Dir.pwd}/#{downloaded_releases.last}/default-vars.yml"
+
+puts Diffy::Diff.new(f1, f2, :source => 'files',  :context => 0)
+puts "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
+
+puts "Difference for Required Variables"
+f1 = "#{Dir.pwd}/#{downloaded_releases.first}/required-vars.yml"
+f2 = "#{Dir.pwd}/#{downloaded_releases.last}/required-vars.yml"
+puts Diffy::Diff.new(f1, f2, :source => 'files',  :context => 0)
+puts "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
+
+puts "Difference for Resource Variables"
+f1 = "#{Dir.pwd}/#{downloaded_releases.first}/resource-vars.yml"
+f2 = "#{Dir.pwd}/#{downloaded_releases.last}/resource-vars.yml"
+puts Diffy::Diff.new(f1, f2, :source => 'files',  :context => 0)
+puts "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
+
+puts "Difference for product template"
+f1 = "#{Dir.pwd}/#{downloaded_releases.first}/product.yml"
+f2 = "#{Dir.pwd}/#{downloaded_releases.last}/product.yml"
+puts Diffy::Diff.new(f1, f2, :source => 'files',  :context => 0)
+
+# Clean up 
+if !opts[:dont_clean_folders]
+  FileUtils.rm_rf('tmp_templates')
+end
