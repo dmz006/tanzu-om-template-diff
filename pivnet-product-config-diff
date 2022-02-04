@@ -30,22 +30,21 @@ def pivnet_request(url)
 end
 
 opts = Optimist::options do
-synopsis "Will provide a list of product tile configuration variable changes between selected release versions"
-version "0.0.1"
+  synopsis "Will provide a list of product tile configuration variable changes between selected release versions"
+  version "0.1.0"
   banner <<-EOS
 Tanzu Product Version Configuration Variable diff 
 
 Usage:
-       pivnet-product-config-diff [options]
+       #{File.basename(__FILE__)} [options]
        
        Enter no options to select from list
        
 Example:
-       pivnet-product-config-diff -p "elastic-runtime" -r "2.10.25 2.10.23"
+       #{File.basename(__FILE__)} -p "elastic-runtime" -r "2.10.25 2.10.23"
 
 where [options] are:
 EOS
-
   opt :product, "Product Slug List", short: "-p", type: :string
   opt :releases, "Releases to diff", short: "-r", type: :string
   opt :dont_clean_folders, "Don't Clean Temp Folder", short: "-d", type: :flag
