@@ -6,6 +6,9 @@ between release versions
 ```
 Usage:
        pivnet-product-config-diff [options]
+       
+       Enter no options to select from a list
+
 Example:
        pivnet-product-config-diff -p "elastic-runtime" -r "2.10.25 2.10.23"
 
@@ -15,8 +18,6 @@ where [options] are:
   -d, --dont-clean-folders    Don't Clean Temp Folder
   -v, --version               Print version and exit
   -h, --help                  Show this message
-
-If no options are entered a list of products and release versions will be displayed to select from
 ```
 ![alt text](https://raw.githubusercontent.com/dmz006/tanzu-om-template-diff/main/images/tanzu-product-config-diff.png "Sample Output")
 

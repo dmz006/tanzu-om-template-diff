@@ -40,9 +40,10 @@ def pivnet_request(url)
 end
 
 opts = Optimist::options do
-version "Tanzu Product Version Configuration Variable diff 0.0.1"
+synopsis "Will provide a list of product tile configuration variable changes between selected release versions"
+version "0.0.1"
   banner <<-EOS
-Tanzu Product Version Configuration Variable diff will provide a list of product tile configuration variable changes between release versions
+Tanzu Product Version Configuration Variable diff 
 
 Usage:
        pivnet-product-config-diff [options]
