@@ -18,4 +18,5 @@ where [options] are:
 ```
 
 # To Install
+git clone https://github.com/dmz006/tanzu-om-template-diff.git
 bundle
