@@ -8,18 +8,8 @@ require 'tty-prompt'
 require 'diffy'
 require 'yaml'
 require 'find'
-require 'byebug'
 
 CONFIG_FILE=".pivnet-diff-config"
-prompt = TTY::Prompt.new
-if File.exists?(CONFIG_FILE)
-  $pivnet_api_token = YAML::load_file(CONFIG_FILE)
-else
-  $pivnet_api_token = prompt.mask("What is your network.pivotal.io legacy API token") 
-  File.open(CONFIG_FILE, "w") do |file|
-    file.write $pivnet_api_token.to_yaml
-  end
-end 
 om_cli = ""
 downloaded_releases = []
 
@@ -62,6 +52,16 @@ EOS
 end
 
 puts `clear`
+
+prompt = TTY::Prompt.new
+if File.exists?(CONFIG_FILE)
+  $pivnet_api_token = YAML::load_file(CONFIG_FILE)
+else
+  $pivnet_api_token = prompt.mask("What is your network.pivotal.io legacy API token") 
+  File.open(CONFIG_FILE, "w") do |file|
+    file.write $pivnet_api_token.to_yaml
+  end
+end 
 
 # Get products available in pivnet
 puts "Getting product list from Tanzu Network"
