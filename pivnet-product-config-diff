@@ -7,6 +7,8 @@ require 'json'
 require 'tty-prompt'
 require 'diffy'
 require 'yaml'
+require 'find'
+require 'byebug'
 
 CONFIG_FILE=".pivnet-diff-config"
 prompt = TTY::Prompt.new
@@ -19,8 +21,7 @@ else
   end
 end 
 om_cli = ""
-blob_path = ""
-downloaded_releases = ""
+downloaded_releases = []
 
 def pivnet_request(url)
   uri = URI.parse(url)
@@ -42,8 +43,12 @@ opts = Optimist::options do
 version "Tanzu Product Version Configuration Variable diff 0.0.1"
   banner <<-EOS
 Tanzu Product Version Configuration Variable diff will provide a list of product tile configuration variable changes between release versions
+
 Usage:
        pivnet-product-config-diff [options]
+       
+       Enter no options to select from list
+       
 Example:
        pivnet-product-config-diff -p "elastic-runtime" -r "2.10.25 2.10.23"
 
@@ -55,7 +60,7 @@ EOS
   opt :dont_clean_folders, "Don't Clean Temp Folder", short: "-d", type: :flag
 end
 
-#puts `clear`
+puts `clear`
 
 # Get products available in pivnet
 puts "Getting product list from Tanzu Network"
@@ -90,7 +95,7 @@ else
   end
 
   # Select releases to diff
-  selected_releases = prompt.multi_select("Select Releases", releases_list.sort_by!{|k,v| Gem::Version.new(v)}, max: 2,per_page: 25)
+  selected_releases = prompt.multi_select("Select Releases", releases_list.sort_by!{|k,v| Gem::Version.new(v)}, max: 2,per_page: 15)
 end
 selected_releases.sort_by!{ |v| Gem::Version.new(v) }
 
@@ -107,34 +112,41 @@ selected_releases.each do |release|
   end
   system om_cli
   
-  blob_path = Dir.glob("tmp_templates/*").first.split('/').last
-  downloaded_releases = Dir.glob("tmp_templates/#{blob_path}/*").sort
+  # Find each release
+  puts "Finding release folders" 
+  Find.find("#{Dir.pwd}/tmp_templates/") do |path|
+    if FileTest.directory?(path)
+      if File.basename(path).start_with?(release)
+      	downloaded_releases << path
+      end
+    end
+  end
 end
 
 # Diff for templates
 Diffy::Diff.default_format = :color
 puts "Difference for Default Variables"
-f1 = "#{Dir.pwd}/#{downloaded_releases.first}/default-vars.yml"
-f2 = "#{Dir.pwd}/#{downloaded_releases.last}/default-vars.yml"
+f1 = "#{downloaded_releases.first}/default-vars.yml"
+f2 = "#{downloaded_releases.last}/default-vars.yml"
 
 puts Diffy::Diff.new(f1, f2, :source => 'files',  :context => 0)
 puts "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
 
 puts "Difference for Required Variables"
-f1 = "#{Dir.pwd}/#{downloaded_releases.first}/required-vars.yml"
-f2 = "#{Dir.pwd}/#{downloaded_releases.last}/required-vars.yml"
+f1 = "#{downloaded_releases.first}/required-vars.yml"
+f2 = "#{downloaded_releases.last}/required-vars.yml"
 puts Diffy::Diff.new(f1, f2, :source => 'files',  :context => 0)
 puts "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
 
 puts "Difference for Resource Variables"
-f1 = "#{Dir.pwd}/#{downloaded_releases.first}/resource-vars.yml"
-f2 = "#{Dir.pwd}/#{downloaded_releases.last}/resource-vars.yml"
+f1 = "#{downloaded_releases.first}/resource-vars.yml"
+f2 = "#{downloaded_releases.last}/resource-vars.yml"
 puts Diffy::Diff.new(f1, f2, :source => 'files',  :context => 0)
 puts "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
 
 puts "Difference for product template"
-f1 = "#{Dir.pwd}/#{downloaded_releases.first}/product.yml"
-f2 = "#{Dir.pwd}/#{downloaded_releases.last}/product.yml"
+f1 = "#{downloaded_releases.first}/product.yml"
+f2 = "#{downloaded_releases.last}/product.yml"
 puts Diffy::Diff.new(f1, f2, :source => 'files',  :context => 0)
 
 # Clean up 
