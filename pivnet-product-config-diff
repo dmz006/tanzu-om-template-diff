@@ -11,6 +11,7 @@ require 'find'
 
 CONFIG_FILE=".pivnet-diff-config"
 om_cli = ""
+selected_releases = []
 downloaded_releases = []
 
 def pivnet_request(url)
@@ -48,9 +49,18 @@ EOS
   opt :product, "Product Slug List", short: "-p", type: :string
   opt :releases, "Releases to diff", short: "-r", type: :string
   opt :dont_clean_folders, "Don't Clean Temp Folder", short: "-d", type: :flag
+  depends :product, :releases
 end
 
-puts `clear`
+if opts[:releases]
+  selected_releases = opts[:releases].split(" ").sort
+  if selected_releases.count < 2
+    puts "You need to select 2 release versions to diff"
+    exit
+  end
+end
+
+puts `clear` unless opts[:product]
 
 prompt = TTY::Prompt.new
 if File.exists?(CONFIG_FILE)
@@ -78,9 +88,7 @@ end
 selected_product_record = products["products"].select {|product|product["slug"] == selected_product}.first
 
 # Get product releases
-if opts[:releases]
-  selected_releases = opts[:releases].split(" ").sort
-else
+if !opts[:releases]
   puts "Getting product #{selected_product} releases url"
   product = pivnet_request("https://network.tanzu.vmware.com/api/v2/products/#{selected_product}")
   release_url = product["_links"]["releases"]["href"]
@@ -95,7 +103,7 @@ else
   end
 
   # Select releases to diff
-  selected_releases = prompt.multi_select("Select Releases", releases_list.sort_by!{|k,v| Gem::Version.new(v)}, max: 2,per_page: 15)
+  selected_releases = prompt.multi_select("Select Releases", releases_list.sort_by!{|k,v| Gem::Version.new(v)}, max: 2,min: 2,per_page: 15, filter: true)
 end
 selected_releases.sort_by!{ |v| Gem::Version.new(v) }
 
