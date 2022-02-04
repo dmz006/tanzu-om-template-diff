@@ -6,7 +6,6 @@ require 'uri'
 require 'json'
 require 'tty-prompt'
 require 'diffy'
-require 'byebug'
 require 'yaml'
 
 CONFIG_FILE=".pivnet-diff-config"
