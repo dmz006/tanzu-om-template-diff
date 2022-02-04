@@ -15,6 +15,8 @@ where [options] are:
   -d, --dont-clean-folders    Don't Clean Temp Folder
   -v, --version               Print version and exit
   -h, --help                  Show this message
+
+If no options are entered a list of products and release versions will be displayed to select from
 ```
 
 # To Install
