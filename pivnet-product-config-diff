@@ -90,8 +90,9 @@ else
   end
 
   # Select releases to diff
-  selected_releases = prompt.multi_select("Select Releases", releases_list.sort_by!{|k,v| v}, max: 2,per_page: 25).sort
+  selected_releases = prompt.multi_select("Select Releases", releases_list.sort_by!{|k,v| Gem::Version.new(v)}, max: 2,per_page: 25)
 end
+selected_releases.sort_by!{ |v| Gem::Version.new(v) }
 
 # Download configuration templates
 puts "Downloading configuration templates for releases #{selected_releases}"
@@ -99,16 +100,14 @@ FileUtils.mkdir 'tmp_templates' unless File.exists?('tmp_templates')
 
 selected_releases.each do |release|
   om_cli = "om config-template --output-directory tmp_templates/ --pivnet-api-token '#{$pivnet_api_token}' --pivnet-product-slug '#{selected_product}' --product-version '#{release}'"
-  old_slugs = selected_product_record["old_slugs"].count
-  if old_slugs > 1
-  	blob_path = selected_product_record["old_slugs"].first
-  	om_cli += " --file-glob '#{blob_path}*.pivotal' "
+  if selected_product == "p-healthwatch" && release.split(".").first == "2"
+    om_cli += " --file-glob 'healthwatch-#{release}*.pivotal' "
+  elsif selected_product == "elastic-runtime"
+    om_cli += " --file-glob 'cf*.pivotal' " 
   end
   system om_cli
   
-  if old_slugs <= 1
-  	blob_path = Dir.glob("tmp_templates/*").first.split('/').last
-  end
+  blob_path = Dir.glob("tmp_templates/*").first.split('/').last
   downloaded_releases = Dir.glob("tmp_templates/#{blob_path}/*").sort
 end
 

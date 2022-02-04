@@ -2,5 +2,5 @@
 .byebug_history
 .project
 .pivnet-diff-config
-configs
+tmp_templates
 Gemfile.lock
