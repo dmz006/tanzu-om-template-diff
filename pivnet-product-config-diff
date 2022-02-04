@@ -68,7 +68,7 @@ if opts[:product]
   selected_product = opts[:product]
 else
   # Select product to get diff for
-  selected_product = prompt.select("Select Product", products_list.sort_by!(&:values), per_page: 20, filter: true)
+  selected_product = prompt.select("Select Product", products_list.sort_by!(&:values), per_page: 15, filter: true)
 end
 selected_product_record = products["products"].select {|product|product["slug"] == selected_product}.first
 

@@ -18,6 +18,7 @@ where [options] are:
 
 If no options are entered a list of products and release versions will be displayed to select from
 ```
+![alt text](https://github.com/dmz006/tanzu-om-template-diff/raw/master/src/common/images/tanzu-product-config-diff.png "Sample Output")
 
 # To Install
 git clone https://github.com/dmz006/tanzu-om-template-diff.git
