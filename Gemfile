@@ -1,5 +1,6 @@
 source 'https://rubygems.org'
 
+gem "optimist"
 gem "tty-prompt"
 gem "net"
 gem "uri"
