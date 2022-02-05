@@ -8,7 +8,7 @@ require 'tty-prompt'
 require 'diffy'
 require 'yaml'
 require 'find'
-
+require 'byebug'
 CONFIG_FILE=".pivnet-diff-config"
 om_cli = ""
 selected_releases = []
@@ -103,9 +103,9 @@ if !opts[:releases]
   end
 
   # Select releases to diff
-  selected_releases = prompt.multi_select("Select Releases", releases_list.sort_by!{|k,v| Gem::Version.new(v)}, max: 2,min: 2,per_page: 15, filter: true)
+  selected_releases = prompt.multi_select("Select Releases", releases_list.sort_by!{|k| [:value]}, max: 2,min: 2,per_page: 15, filter: true)
 end
-selected_releases.sort_by!{ |v| Gem::Version.new(v) }
+selected_releases.sort_by!{|k| [:value]}
 
 # Download configuration templates
 puts "Downloading configuration templates for releases #{selected_releases}"
